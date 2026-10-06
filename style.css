@@ -2,3 +2,6 @@
 
 
 .traffic{background:#eff5ff;border:1px solid #c4d8ff;border-radius:10px;padding:16px;margin:20px 0}.traffic-label{font-size:14px;color:#486282}.traffic-number{font-size:36px;font-weight:750;letter-spacing:-1px;color:#1746b8;margin:9px 0}.traffic-number small{font-size:14px;letter-spacing:0;font-weight:400}.traffic-context{font-size:14px;line-height:1.65}.traffic-comparison{display:flex;justify-content:space-between;padding:12px 0;border-top:1px solid #d5e1f3;border-bottom:1px solid #d5e1f3;font-size:14px;line-height:1.7}.traffic a{color:#164eb8;font-size:13px;line-height:1.7}.traffic summary{font-size:14px;cursor:pointer;color:#164eb8}
+
+
+.view-label{display:block;margin-top:14px;font-size:14px;color:var(--muted)}.view-label select{margin-top:6px}.traffic details{margin-top:14px}
