@@ -1,100 +1,28 @@
-# Field Marketing Point Map
+# ZYMIX 地推点位工作台
 
-An interactive map prototype for selecting field marketing locations, scheduling small trials and reviewing activity feedback. Built as a personal project based on field marketing workflow experience.
+在原有三栏地图、排班和反馈页面中加入“点击地点即可查看”的公开客流参考。
 
-**中文界面。All point names, ratings and activity records are synthetic examples.** Coordinates illustrate the interface around central London; they are not verified venue recommendations. The ZYMIX label provides the project context and does not imply an official company product.
+## 当前四个区域
 
-## What it does
+| 活动区域 | 用作参考的车站 | 2025年日均进出闸次数 |
+|---|---|---:|
+| UCL Gordon Square | Euston Square | 31,291 |
+| Whitechapel Station 周边 | Whitechapel | 51,246 |
+| Panda’s Kitchen Angel 周边 | Angel | 33,156 |
+| Shepherd’s Bush / Westfield 周边 | Shepherd’s Bush 地铁站系列 | 36,514 |
 
-- Explore and select locations on a draggable, zoomable map.
-- Search locations and filter by workflow status or indoor/outdoor setting.
-- Add a candidate by clicking its position on the map.
-- Record whether a location can host an activity.
-- Schedule a trial with a date, time, team size, duration and responsible person.
-- Submit feedback against a scheduled trial, or add an activity retrospectively.
-- Calculate registrations, scan-to-registration conversion, registrations per person-hour and cost per registration.
-- Pause and reopen a location as operational conditions change.
+数值来自 [Marius Comper 的伦敦车站客流汇总](https://mariuscomper.uk/london-station-diary/)，该页面使用 [TfL 开放数据](https://crowding.data.tfl.gov.uk/)。本版在 2026-10-06 核对了公开表内的 2019、2025 年日均数值，未下载原始逐日文件重新计算。因此界面明确标注“TfL 数据的第三方汇总”，不能宣称已直接核验官方原始统计。
 
-## Workflow
+这是进闸加出闸的次数，不是去重人数，也不是街道、广场、餐厅或商场的总人数。数据为全年历史日均，不能据此推算某天下午的人流。不同车站系列不相加成区域总量。区域停留人数和停留时长尚无可核实的公开数值。
 
-1. **Collect candidates:** record location, audience fit, willingness to stop, accessibility and weather suitability.
-2. **Confirm feasibility:** locations awaiting confirmation remain candidates. Confirmed, active locations can be scheduled.
-3. **Run a small trial:** specify time, team and execution notes.
-4. **Record actual results:** capture person-hours, scans, registrations, total cost and field observations.
-5. **Review and repeat:** compare several activities, adjust timing or pause a location when appropriate.
+## 操作
 
-### Initial screening score
+点击左侧列表或地图标记，右侧首先显示历史客流、参考车站、2019年对照、来源和口径。列表按2025年日均车站客流从高到低排列。所有区域的场地许可初始为“待确认”，须核实实际活动范围的管理方和派样要求；规则网页不是获得许可的证明。
 
-Each factor is rated from 1 to 5. The prototype uses illustrative weights, not a validated company scoring model:
+原有新增地点、排班、反馈功能保留。活动结果初始为空，避免把原有虚构业绩关联到真实地点。页面填写内容仅在当前页面内存中保存，刷新会重置。公开项目不包含公司内部日报或个人信息。
 
-| Factor | Weight |
-|---|---:|
-| Target audience fit | 35% |
-| Willingness to stop and talk | 35% |
-| Access and execution convenience | 15% |
-| Weather suitability | 15% |
+## 本地打开和更新
 
-The weighted average is multiplied by 20 to produce a score out of 100. This score prioritises trials; it does not predict registrations. Location feasibility is checked separately.
+使用 VS Code 的 Live Preview 打开 `index.html`。更新 GitHub 时上传根目录的 `index.html`、`style.css`、`app.js`、`README.md`，覆盖同名文件。没有构建步骤或 API 密钥。
 
-### Activity metrics
-
-| Metric | Calculation |
-|---|---|
-| Registrations | Sum of registrations from completed activities |
-| Conversion | Total registrations / total scans |
-| Registrations per person-hour | Total registrations / total actual person-hours |
-| Cost per registration | Total actual cost / total registrations |
-
-Ratios use the matching totals, rather than averaging activity-level rates. Planned activities are excluded. A zero denominator displays a dash. Cost should include all relevant activity spending. Person-hours are the sum of each team member's actual working hours.
-
-The feedback form assumes scans and registrations use the same activity attribution window. It rejects registrations above scans for this simplified model; an operational system may need a different rule for delayed or cross-device attribution.
-
-## Run locally
-
-For a no-command setup, use VS Code with Microsoft's Live Preview extension. Follow [中文运行说明](START_HERE.md).
-
-No build step, npm installation or API key is required. With Python installed, run from this project folder:
-
-```bash
-python -m http.server 8000
-```
-
-On Windows, `py -m http.server 8000` can also be used. Open `http://localhost:8000` in a modern browser. Internet access is required for map tiles. If tiles are unavailable, the point list and workflow controls remain available.
-
-## Publish on GitHub Pages
-
-Upload the contents of this folder to the root of a repository, so `index.html` is at the top level. In **Settings → Pages**, choose **Deploy from a branch**, select **main** and **/(root)**, then save. Use the URL shown by GitHub once deployment completes.
-
-See [上传和发布指南](UPLOAD_GUIDE.md) for Chinese instructions.
-
-## Source files
-
-| File | Purpose |
-|---|---|
-| `index.html` | Main interface and page metadata |
-| `style.css` | Desktop and mobile layouts |
-| `app.js` | Demo data, map projection, state transitions, forms and calculations |
-| `START_HERE.md` | Chinese local setup and walkthrough |
-| `UPLOAD_GUIDE.md` | GitHub upload and publishing instructions |
-
-The application uses plain HTML, CSS and JavaScript. Relative asset paths support GitHub Pages project URLs. An optional, feature-detected WebMCP tool selects a location in compatible browsers; it is not required for ordinary use.
-
-## Prototype limits
-
-- Changes live only in page memory and reset on refresh. There is no database, shared editing or account system.
-- Dates, permissions and results in the initial data are fictional examples.
-- Ratings are entered when a point is created. Historical feedback updates activity metrics, not the initial screening ratings.
-- This version does not include live traffic estimates, route planning or verified venue availability.
-- JavaScript syntax and representative calculation, state and coordinate-conversion checks were completed. Full browser interaction testing and optional WebMCP validation have not been completed.
-
-## Map attribution and references
-
-Map data © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright). Raster tiles are loaded on demand from OpenStreetMap. Attribution is displayed on the map. There is no bulk download or offline tile cache.
-
-- [OpenStreetMap tile usage policy](https://operations.osmfoundation.org/policies/tiles/)
-- [GitHub Pages publishing sources](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site)
-- [Uploading repository files](https://docs.github.com/en/repositories/working-with-files/managing-files/adding-a-file-to-a-repository)
-
-## 中文项目简介
-
-这个项目把地推的选点、试推、排班和反馈放在同一张地图里。选点时同时考虑目标人群和愿意停下来交流的人流，再用实际活动数据复核判断。适合作为工作流设计与空间数据应用的个人演示项目。目前所有示例均为虚构数据，刷新页面后会恢复初始状态。
+底图：© [OpenStreetMap 贡献者](https://www.openstreetmap.org/copyright)。
