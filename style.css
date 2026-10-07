@@ -1,10 +1,10 @@
 :root {
   font-family: Arial, "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
   color: #17253b;
-  background: #edf2f8;
+  background: #f0f8f2;
   font-size: 16px;
-  --blue: #1d4ed8;
-  --line: #e3e8f0;
+  --primary: #07c160;
+  --line: #dcebe1;
   --muted: #66758a;
 }
 * {
@@ -29,8 +29,8 @@ button {
   font-weight: 600;
 }
 button:hover {
-  background: #eff5ff;
-  border-color: #9bb4ed;
+  background: #e8f8ee;
+  border-color: #83dba8;
 }
 button:disabled {
   cursor: not-allowed;
@@ -39,16 +39,16 @@ button:disabled {
 button:focus-visible,
 input:focus-visible,
 select:focus-visible {
-  outline: 3px solid #8eb1ff;
+  outline: 3px solid #80dda7;
   outline-offset: 2px;
 }
 .primary {
-  background: var(--blue);
+  background: var(--primary);
   color: white;
-  border-color: var(--blue);
+  border-color: var(--primary);
 }
 .primary:hover {
-  background: #163da8;
+  background: #06ad56;
   color: white;
 }
 .quiet {
@@ -71,7 +71,7 @@ header {
 .logo {
   width: 42px;
   height: 42px;
-  background: var(--blue);
+  background: var(--primary);
   border-radius: 11px;
   display: grid;
   place-items: center;
@@ -131,7 +131,7 @@ main {
 input,
 select {
   padding: 10px;
-  border: 1px solid #d5dfed;
+  border: 1px solid #cce3d4;
   border-radius: 7px;
   width: 100%;
   color: #243451;
@@ -175,9 +175,9 @@ input::placeholder {
   position: relative;
 }
 .point-card.active {
-  border-color: var(--blue);
-  box-shadow: inset 3px 0 var(--blue);
-  background: #f4f7ff;
+  border-color: var(--primary);
+  box-shadow: inset 3px 0 var(--primary);
+  background: #eaf8ef;
 }
 .card-row {
   display: flex;
@@ -196,7 +196,7 @@ input::placeholder {
 }
 .score {
   font-size: 14px;
-  color: var(--blue);
+  color: var(--primary);
   font-weight: bold;
 }
 .badge {
@@ -214,8 +214,8 @@ input::placeholder {
   color: #137965;
 }
 .badge.planned {
-  background: #e8eeff;
-  color: #315bb9;
+  background: #e4f5e9;
+  color: #13784f;
 }
 .badge.done {
   background: #f0eaff;
@@ -238,7 +238,7 @@ input::placeholder {
 }
 .map-bar {
   height: 64px;
-  background: #f7f9fc;
+  background: #f3faf5;
   display: flex;
   justify-content: space-between;
   padding: 0 20px;
@@ -292,7 +292,7 @@ input::placeholder {
   background: #138774;
 }
 .marker.planned {
-  background: #315bce;
+  background: #20996b;
 }
 .marker.done {
   background: #8451c5;
@@ -301,12 +301,12 @@ input::placeholder {
   background: #a7672b;
 }
 .marker.selected {
-  outline: 3px solid #233957;
+  outline: 3px solid #174b31;
   z-index: 3;
 }
 .marker:hover {
   filter: brightness(1.15);
-  background: #1d4ed8;
+  background: #07c160;
   color: white;
 }
 .zoom {
@@ -331,7 +331,7 @@ input::placeholder {
   background: #ffffffdf;
 }
 .attribution a {
-  color: #25569a;
+  color: #087c43;
 }
 .map-message {
   position: absolute;
@@ -345,7 +345,7 @@ input::placeholder {
 }
 .legend {
   padding: 13px 16px;
-  background: #f7f9fc;
+  background: #f3faf5;
   display: flex;
   gap: 14px;
   flex-wrap: wrap;
@@ -367,7 +367,7 @@ input::placeholder {
   background: #138774;
 }
 .dot.planned {
-  background: #315bce;
+  background: #20996b;
 }
 .dot.done {
   background: #8451c5;
@@ -407,7 +407,7 @@ input::placeholder {
   gap: 8px;
 }
 .metric {
-  background: #f4f7fb;
+  background: #f0f8f2;
   border-radius: 8px;
   padding: 12px;
 }
@@ -469,7 +469,7 @@ input::placeholder {
   font-size: 12px;
   line-height: 30px;
   color: #6d7c8e;
-  background: #f7f9fc;
+  background: #f3faf5;
   border-top: 1px solid var(--line);
 }
 dialog {
@@ -517,7 +517,7 @@ dialog::backdrop {
 .step {
   margin: 18px 0;
   padding-left: 15px;
-  border-left: 3px solid #5179d8;
+  border-left: 3px solid #07c160;
 }
 .step strong {
   display: block;
@@ -648,21 +648,21 @@ dialog::backdrop {
 }
 
 .traffic {
-  background: #eff5ff;
-  border: 1px solid #c4d8ff;
+  background: #e8f8ee;
+  border: 1px solid #b6e5c8;
   border-radius: 10px;
   padding: 16px;
   margin: 20px 0;
 }
 .traffic-label {
   font-size: 14px;
-  color: #486282;
+  color: #4a715b;
 }
 .traffic-number {
   font-size: 36px;
   font-weight: 750;
   letter-spacing: -1px;
-  color: #1746b8;
+  color: #087c43;
   margin: 9px 0;
 }
 .traffic-number small {
@@ -678,20 +678,20 @@ dialog::backdrop {
   display: flex;
   justify-content: space-between;
   padding: 12px 0;
-  border-top: 1px solid #d5e1f3;
-  border-bottom: 1px solid #d5e1f3;
+  border-top: 1px solid #cfe8d8;
+  border-bottom: 1px solid #cfe8d8;
   font-size: 14px;
   line-height: 1.7;
 }
 .traffic a {
-  color: #164eb8;
+  color: #087c43;
   font-size: 13px;
   line-height: 1.7;
 }
 .traffic summary {
   font-size: 14px;
   cursor: pointer;
-  color: #164eb8;
+  color: #087c43;
 }
 
 .view-label {
@@ -705,4 +705,23 @@ dialog::backdrop {
 }
 .traffic details {
   margin-top: 14px;
+}
+
+/* 绿色主题下保留状态的区别。 */
+.score {
+  color: #087c43;
+}
+.rating-input {
+  align-items: center;
+  gap: 12px;
+}
+.rating-input select {
+  width: 94px;
+  flex-shrink: 0;
+  margin: 0;
+}
+.header-right .demo {
+  background: #e8f8ee;
+  color: #087c43;
+  border-color: #b6e5c8;
 }
