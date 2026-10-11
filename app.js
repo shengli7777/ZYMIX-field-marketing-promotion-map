@@ -310,32 +310,21 @@ function status(point) {
   return "可试推";
 }
 function aggregate(point) {
-  const activityRecords = records.filter(
-    (record) => record.pid === point.id && record.state === "已完成",
-  );
-  const totals = activityRecords.reduce(
-    (totals, record) => ({
-      n: totals.n + 1,
-      h: totals.h + record.hours,
-      s: totals.s + record.scans,
-      r: totals.r + record.regs,
-      c: totals.c + record.cost,
-    }),
-    {
-      n: 0,
-      h: 0,
-      s: 0,
-      r: 0,
-      c: 0,
-    },
-  );
-  return {
-    ...totals,
-    rate: totals.s ? totals.r / totals.s : null,
-    cac: totals.r ? totals.c / totals.r : null,
-    rph: totals.h ? totals.r / totals.h : null,
+  const completed = records.filter(record => record.pid === point.id && record.state === '已完成');
+  const totals = completed.reduce((sum, record) => ({
+    n: sum.n + 1, h: sum.h + record.hours, r: sum.r + record.regs,
+    s: sum.s + (record.scans ?? 0), c: sum.c + (record.cost ?? 0)
+  }), {n:0,h:0,r:0,s:0,c:0});
+  const scansComplete = completed.every(record => Number.isFinite(record.scans));
+  const costsComplete = completed.every(record => Number.isFinite(record.cost));
+  return {...totals,
+    rate: scansComplete && totals.s > 0 ? totals.r / totals.s : null,
+    cac: costsComplete && totals.r > 0 ? totals.c / totals.r : null,
+    rph: totals.h > 0 ? totals.r / totals.h : null,
+    scansComplete, costsComplete
   };
 }
+
 function nextAction(point) {
   if (point.permission === "不允许") return "该点位不可开展，选择其他点位。";
   if (point.permission === "待确认")
@@ -449,7 +438,8 @@ function renderDetail() {
 <strong>${metrics.cac === null ? "—" : "£" + metrics.cac.toFixed(2)}</strong>
 </div>
 </div>
-<p class="note">按该点位全部已完成活动汇总。转化率＝注册总量÷扫码总量；成本＝人工、交通和物料等实际投入。</p>
+<p class="note">按该区域全部已完成活动汇总。转化率＝注册总量÷扫码总量；每注册成本＝总成本÷注册总量。缺少扫码数或费用时，对应指标暂不计算。</p>
+<p class="note">${metrics.n ? `合计 ${metrics.h} 人时 · ${metrics.scansComplete ? metrics.s + " 扫码" : "扫码待补齐"} · ${metrics.costsComplete ? "£" + metrics.c.toFixed(2) : "费用待补齐"}` : ""}</p>
 <div class="next">
 <strong>下一步</strong>
 <p class="note">${nextAction(point)}</p>
@@ -461,15 +451,12 @@ function renderDetail() {
 </div>
 <h3>活动记录</h3>${
       activityRecords.length
-        ? activityRecords
-            .map(
-              (record) => `<div class="record">
-<strong>${record.date} ${record.time} · ${record.state}</strong>
-<br>${record.state === "已完成" ? `${record.hours} 人时 · ${record.scans} 扫码 · ${record.regs} 注册 · £${record.cost}` : `${record.people} 人 · ${record.duration} 小时`}<br>${esc(record.note || "")}</div>`,
-            )
-            .join("")
+        ? activityRecords.map(activityCard).join("")
         : '<p class="note">尚无活动记录。</p>'
     }`;
+  $("#detail").querySelectorAll("[data-record-id]").forEach(button => {
+    button.onclick = () => openFeedback(point, Number(button.dataset.recordId));
+  });
   $("#permission").value = point.permission;
   $("#permission").onchange = (event) => {
     point.permission = event.target.value;
@@ -675,75 +662,75 @@ function openSchedule(point) {
     toast("试推已加入活动记录");
   };
 }
-function openFeedback(point) {
-  let plans = records.filter(
-    (record) => record.pid === point.id && record.state === "已排班",
-  );
-  openModal(
-    "记录活动反馈",
-    `<p class="note">填写实际投入。人时为所有成员实际工作时间之和；扫码与注册使用同一活动归因口径。</p>
-<form id="feedbackForm">
-<div class="form-grid">
-<label class="full">对应活动<select name="plan">
-<option value="">补录一次活动</option>${plans.map((record) => `<option value="${record.id}">${record.date} ${record.time} 的试推</option>`).join("")}</select>
-</label>${field("日期", "date", "date", todayDate())}${field("开始时间", "time", "time", "13:00")}${field("实际人时", "hours", "number", "", 'min="0.1" step="0.1"')}${field("总成本 £", "cost", "number", "", 'min="0" step="0.01"')}${field("扫码次数", "scans", "number", "", 'min="0" step="1"')}${field("去重注册人数", "regs", "number", "", 'min="0" step="1"')}<label class="full">现场反馈<input name="note" placeholder="人群、停留、天气或中断情况" required>
-</label>
-</div>
-<p id="formError" class="error">
-</p>
-<button class="primary submit">保存反馈</button>
-</form>`,
-  );
-  const feedbackForm = $("#feedbackForm");
-  feedbackForm.elements.plan.onchange = () => {
-    const selectedPlan = plans.find(
-      (record) => record.id === Number(feedbackForm.elements.plan.value),
-    );
-    feedbackForm.elements.date.value = selectedPlan
-      ? selectedPlan.date
-      : todayDate();
-    feedbackForm.elements.time.value = selectedPlan
-      ? selectedPlan.time
-      : "13:00";
-  };
-  $("#feedbackForm").onsubmit = (event) => {
-    event.preventDefault();
-    const formData = new FormData(event.target),
-      scans = Number(formData.get("scans")),
-      regs = Number(formData.get("regs"));
-    if (regs > scans) {
-      $("#formError").textContent =
-        "注册人数超过扫码次数，请先核对同一活动的统计口径。";
-      return;
+function activityCard(record) {
+  const timeRange = record.endTime ? `${record.time}–${record.endTime}` : record.time;
+  if (record.state !== '已完成') return `<div class="record"><strong>${esc(record.date)} ${esc(timeRange)} · ${esc(record.state)}</strong><br>${record.people} 人 · ${record.duration} 小时<br>${esc(record.note || '')}</div>`;
+  return `<div class="record">
+    <strong>${esc(record.date)} ${esc(timeRange)} · 已完成</strong>
+    <div>推荐码：${esc(record.referralCode || '未填写')}</div>
+    <div>${record.hours} 人时 · ${record.scans === null || record.scans === undefined ? '扫码待补' : record.scans + ' 扫码'} · ${record.regs} 注册 · ${record.cost === null || record.cost === undefined ? '费用待补' : '£' + record.cost.toFixed(2)}</div>
+    ${record.note ? `<div>${esc(record.note)}</div>` : ''}
+    <button type="button" class="quiet edit-record" data-record-id="${record.id}">编辑记录</button>
+  </div>`;
+}
+
+function openFeedback(point, recordId = null) {
+  const existing = recordId === null ? null : records.find(record => record.id === recordId && record.pid === point.id && record.state === '已完成');
+  if (recordId !== null && !existing) { toast('找不到这条记录'); return; }
+  const plans = records.filter(record => record.pid === point.id && record.state === '已排班');
+  const input = (label, name, type, value, required = true, extra = '') => `<label>${label}<input name="${name}" type="${type}" value="${esc(value ?? '')}" ${required ? 'required' : ''} ${extra}></label>`;
+  openModal(existing ? '编辑活动反馈' : '记录活动反馈', `
+    <p class="note">区域：${esc(point.name)}。一组一场填一条；推荐码用来区分同一区域的不同小组。</p>
+    <form id="feedbackForm"><div class="form-grid">
+      ${existing ? '' : `<label class="full">对应活动<select name="plan"><option value="">补录一次活动</option>${plans.map(record => `<option value="${record.id}">${esc(record.date)} ${esc(record.time)} 的试推</option>`).join('')}</select></label>`}
+      ${input('日期','date','date',existing?.date || todayDate())}
+      ${input('推荐码','referralCode','text',existing?.referralCode || '',true,'maxlength="60" placeholder="例如：1号、004"')}
+      ${input('开始时间','time','time',existing?.time || '13:00')}
+      ${input('结束时间','endTime','time',existing?.endTime || '')}
+      ${input('实际总人时','hours','number',existing?.hours,true,'min="0.1" step="0.1"')}
+      ${input('总成本 £（可后补）','cost','number',existing?.cost,false,'min="0" step="0.01"')}
+      ${input('扫码次数（可后补）','scans','number',existing?.scans,false,'min="0" step="1"')}
+      ${input('新增注册人数','regs','number',existing?.regs,true,'min="0" step="1"')}
+      <label class="full">备注（选填）<textarea name="note" rows="2" maxlength="1000" placeholder="例如：组长5.5小时，组员1小时">${esc(existing?.note || '')}</textarea></label>
+    </div>
+    <p class="note">2人各做2小时＝4人时。未知扫码数或费用留空，确实没有才填0；本表按同日活动记录。</p>
+    <p id="formError" class="error" role="alert"></p>
+    <button class="primary submit">${existing ? '保存修改' : '保存反馈'}</button></form>`);
+  const form = $('#feedbackForm');
+  if (form.elements.plan) form.elements.plan.onchange = () => {
+    const plan = plans.find(record => record.id === Number(form.elements.plan.value));
+    form.elements.date.value = plan?.date || todayDate();
+    form.elements.time.value = plan?.time || '13:00';
+    form.elements.endTime.value = '';
+    if (plan?.duration) {
+      const [hours, minutes] = plan.time.split(':').map(Number);
+      const endMinutes = hours * 60 + minutes + Math.round(plan.duration * 60);
+      if (endMinutes < 1440) form.elements.endTime.value = `${String(Math.floor(endMinutes / 60)).padStart(2,'0')}:${String(endMinutes % 60).padStart(2,'0')}`;
     }
-    let plan = records.find(
-      (record) =>
-        record.id === Number(formData.get("plan")) &&
-        record.pid === point.id &&
-        record.state === "已排班",
-    );
-    const data = {
-      pid: point.id,
-      date: formData.get("date"),
-      time: formData.get("time"),
-      hours: Number(formData.get("hours")),
-      cost: Number(formData.get("cost")),
-      scans,
-      regs,
-      note: formData.get("note"),
-      state: "已完成",
-    };
-    if (plan) Object.assign(plan, data);
-    else
-      records.push({
-        ...data,
-        id: records.length + 1,
-      });
-    $("#modal").close();
-    renderAll();
-    toast("反馈已保存，点位指标已更新");
+  };
+  form.onsubmit = event => {
+    event.preventDefault();
+    if (!form.reportValidity()) return;
+    const data = new FormData(form);
+    const optionalNumber = name => data.get(name).trim() === '' ? null : Number(data.get(name));
+    const hours = Number(data.get('hours')), regs = Number(data.get('regs'));
+    const scans = optionalNumber('scans'), cost = optionalNumber('cost');
+    const referralCode = data.get('referralCode').trim();
+    const error = message => { $('#formError').textContent = message; };
+    if (!referralCode) return error('请填写推荐码。');
+    if (data.get('endTime') <= data.get('time')) return error('结束时间应晚于开始时间；跨日活动请拆分记录。');
+    if (!Number.isFinite(hours) || hours <= 0 || !Number.isInteger(regs) || regs < 0 || (scans !== null && (!Number.isInteger(scans) || scans < 0)) || (cost !== null && (!Number.isFinite(cost) || cost < 0))) return error('请核对人时、人数和费用。');
+    if (scans !== null && regs > scans) return error('注册人数超过扫码次数，请核对同一场活动的数据；扫码数未知可留空。');
+    const duplicate = records.some(record => record.id !== existing?.id && record.pid === point.id && record.state === '已完成' && record.date === data.get('date') && record.time === data.get('time') && record.endTime === data.get('endTime') && record.referralCode === referralCode);
+    if (duplicate) return error('相同日期、时段和推荐码已有记录，请编辑原记录。');
+    const plan = existing ? null : records.find(record => record.id === Number(data.get('plan')) && record.pid === point.id && record.state === '已排班');
+    const updated = {pid:point.id,date:data.get('date'),time:data.get('time'),endTime:data.get('endTime'),referralCode,hours,scans,regs,cost,note:data.get('note').trim(),state:'已完成'};
+    if (existing || plan) Object.assign(existing || plan, updated);
+    else records.push({...updated,id:Math.max(0,...records.map(record => record.id))+1});
+    $('#modal').close(); renderAll(); toast(existing ? '记录已修改，汇总已更新' : '反馈已保存到当前页面');
   };
 }
+
 function openAdd(lat, lng) {
   addMode = false;
   $("#mapMessage").hidden = true;
@@ -905,3 +892,4 @@ $("#map").onkeydown = (event) => {
 };
 new ResizeObserver(renderMap).observe($("#map"));
 renderAll();
+

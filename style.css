@@ -725,3 +725,7 @@ dialog::backdrop {
   color: #087c43;
   border-color: #b6e5c8;
 }
+
+
+textarea { font: inherit; width: 100%; padding: 10px; border: 1px solid #cce3d4; border-radius: 7px; resize: vertical; box-sizing: border-box; }
+.edit-record { margin-top: 8px; }
