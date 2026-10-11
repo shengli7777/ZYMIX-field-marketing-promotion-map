@@ -19,7 +19,7 @@
         <div><strong>ZYMIX</strong><span>地推点位工作台</span></div>
       </div>
       <div class="header-right">
-        <span class="demo">选址 · 排班 · 反馈</span
+        <button id="loginBtn">登录工作台</button><span id="cloudStatus" class="demo">公开演示</span
         ><button id="helpBtn" class="quiet">查看工作流</button
         ><button id="addBtn" class="primary">新增点位</button>
       </div>
@@ -35,7 +35,7 @@
         ><label class="view-label"
           >查看内容<select id="viewFilter">
             <option value="">全部点位</option>
-            <option value="candidate">客流候选区域</option>
+            <option value="candidate">团队活动区域</option>
             <option value="demo">活动演示点位</option>
           </select></label
         >
@@ -59,7 +59,7 @@
         </div>
         <div class="list-top"><span id="count"></span><span>候选与活动</span></div>
         <div id="pointList" class="point-list"></div>
-        <p class="footnote">四个区域附公开客流；六个演示点用于体验排班和反馈。</p>
+        <p class="footnote">未登录时显示模拟活动；登录后只显示团队保存的地点。</p>
       </aside>
       <section class="map-area">
         <div class="map-bar">
@@ -90,7 +90,7 @@
       </section>
       <aside id="detail" class="detail" aria-live="polite"></aside>
     </main>
-    <div class="bottom-note">原型中的修改仅在本次页面暂存，刷新后恢复演示数据。</div>
+    <div class="bottom-note">公开演示：修改仅本次有效。登录后地点、评分、场地状态、排班与反馈保存到云端。</div>
     <dialog id="modal">
       <div class="modal-head">
         <h2 id="modalTitle"></h2>
@@ -100,6 +100,7 @@
     </dialog>
     <div id="toast" role="status"></div>
     <script src="app.js"></script>
+    <script src="cloud.js"></script>
   </body>
 </html>
 

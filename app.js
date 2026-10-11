@@ -13,115 +13,8 @@ const esc = (s) =>
         "'": "&#39;",
       })[c],
   );
-// 候选区域使用公开客流，演示点用于体验活动流程。
+// 未登录时提供模拟活动，登录后只读取团队保存的地点。
 const points = [
-  {
-    indoor: "室外",
-    permission: "待确认",
-    match: null,
-    stop: null,
-    access: null,
-    weather: null,
-    paused: false,
-    id: 1,
-    name: "A · UCL Gordon Square",
-    type: "校园周边区域",
-    lat: 51.5251,
-    lng: -0.13,
-    note: "Gordon Square 周边，参考 Euston Square 站客流。",
-    permitSource: "https://www.camden.gov.uk/putting-on-event-camden",
-    traffic: {
-      station: "Euston Square",
-      daily2025: 31291,
-      daily2019: 30169,
-      year: 2025,
-      source: "https://mariuscomper.uk/london-station-diary/",
-      publisher: "Marius Comper · TfL 开放数据汇总",
-      accessed: "2026-10-06",
-    },
-    group: "candidate",
-  },
-  {
-    indoor: "室外",
-    permission: "待确认",
-    match: null,
-    stop: null,
-    access: null,
-    weather: null,
-    paused: false,
-    id: 2,
-    name: "B · Whitechapel Station",
-    type: "车站周边区域",
-    lat: 51.5194,
-    lng: -0.0607,
-    note: "Whitechapel 站周边。",
-    permitSource:
-      "https://tfl.gov.uk/info-for/business-and-advertisers/commercial-partnerships-and-experiential-marketing",
-    traffic: {
-      station: "Whitechapel",
-      daily2025: 51246,
-      daily2019: 35891,
-      year: 2025,
-      source: "https://mariuscomper.uk/london-station-diary/",
-      publisher: "Marius Comper · TfL 开放数据汇总",
-      accessed: "2026-10-06",
-    },
-    group: "candidate",
-  },
-  {
-    indoor: "室外",
-    permission: "待确认",
-    match: null,
-    stop: null,
-    access: null,
-    weather: null,
-    paused: false,
-    id: 3,
-    name: "C · Panda’s Kitchen Angel",
-    type: "Angel 餐厅周边区域",
-    lat: 51.5321,
-    lng: -0.1058,
-    note: "Panda’s Kitchen Angel 周边，参考 Angel 站客流。",
-    permitSource:
-      "https://www.islington.gov.uk/libraries-arts-and-heritage/arts/events-funding-and-space/organising-an-event/licences-and-permissions",
-    traffic: {
-      station: "Angel",
-      daily2025: 33156,
-      daily2019: 46238,
-      year: 2025,
-      source: "https://mariuscomper.uk/london-station-diary/",
-      publisher: "Marius Comper · TfL 开放数据汇总",
-      accessed: "2026-10-06",
-    },
-    group: "candidate",
-  },
-  {
-    indoor: "室外",
-    permission: "待确认",
-    match: null,
-    stop: null,
-    access: null,
-    weather: null,
-    paused: false,
-    id: 4,
-    name: "D · Shepherd’s Bush / Westfield",
-    type: "车站及商场周边区域",
-    lat: 51.5047,
-    lng: -0.219,
-    note: "Shepherd’s Bush 站及 Westfield 周边。",
-    permitSource:
-      "https://tfl.gov.uk/info-for/business-and-advertisers/commercial-partnerships-and-experiential-marketing",
-    traffic: {
-      station: "Shepherd's Bush",
-      daily2025: 36514,
-      daily2019: 54287,
-      year: 2025,
-      source: "https://mariuscomper.uk/london-station-diary/",
-      publisher: "Marius Comper · TfL 开放数据汇总",
-      accessed: "2026-10-06",
-    },
-    group: "candidate",
-  },
   {
     id: 5,
     name: "演示点 A",
@@ -274,7 +167,9 @@ const classes = {
   已反馈: "done",
   暂停: "paused",
 };
-let selected = 1,
+let cloudUser = null;
+let cloudToken = null;
+let selected = 5,
   addMode = false,
   center = {
     lat: 51.52,
@@ -294,7 +189,6 @@ function score(point) {
 }
 function status(point) {
   if (point.paused || point.permission === "不允许") return "暂停";
-  if (point.permission !== "已确认") return "候选";
   if (
     records.some(
       (record) => record.pid === point.id && record.state === "已排班",
@@ -307,7 +201,7 @@ function status(point) {
     )
   )
     return "已反馈";
-  return "可试推";
+  return point.permission === "已确认" ? "可试推" : "候选";
 }
 function aggregate(point) {
   const completed = records.filter(record => record.pid === point.id && record.state === '已完成');
@@ -347,7 +241,7 @@ function filtered() {
       (point) =>
         (!$("#viewFilter").value || point.group === $("#viewFilter").value) &&
         (!$("#search").value ||
-          (point.name + point.type).includes($("#search").value)) &&
+          (point.name + point.type + (point.city || "") + (point.address || "")).toLowerCase().includes($("#search").value.toLowerCase())) &&
         (!$("#statusFilter").value ||
           status(point) === $("#statusFilter").value) &&
         (!$("#indoorFilter").value ||
@@ -394,10 +288,7 @@ function selectPoint(id) {
   if (!points.some((point) => point.id === id)) throw Error("点位不存在");
   selected = id;
   let point = points.find((point) => point.id === id);
-  center = {
-    lat: point.lat,
-    lng: point.lng,
-  };
+  if (Number.isFinite(point.lat) && Number.isFinite(point.lng)) center = {lat: point.lat, lng: point.lng};
   renderAll();
 }
 function renderDetail() {
@@ -411,7 +302,7 @@ function renderDetail() {
   $("#detail").innerHTML =
     `<span class="badge ${classes[status(point)]}">${status(point)}</span>
 <h2>${esc(point.name)}</h2>
-<div class="meta">${esc(point.type)} · ${point.indoor}<br>区域中心示意坐标 ${point.lat.toFixed(4)}, ${point.lng.toFixed(4)}</div>${trafficPanel(point)}<h3>开展条件</h3>
+<div class="meta">${esc(point.type)} · ${point.indoor}<br>${Number.isFinite(point.lat) && Number.isFinite(point.lng) ? `区域中心示意坐标 ${point.lat.toFixed(4)}, ${point.lng.toFixed(4)}` : `地点待核对 · ${esc(point.city || "")} ${esc(point.address || "")}`}</div>${trafficPanel(point)}<h3>开展条件</h3>
 <label>场地确认<select id="permission">
 <option>待确认</option>
 <option>已确认</option>
@@ -458,31 +349,15 @@ function renderDetail() {
     button.onclick = () => openFeedback(point, Number(button.dataset.recordId));
   });
   $("#permission").value = point.permission;
-  $("#permission").onchange = (event) => {
-    point.permission = event.target.value;
-    renderAll();
-    toast("已更新场地确认");
-  };
+  $("#permission").onchange = event => updatePointField(point, "permission", event.target.value);
   $("#detail")
     .querySelectorAll("[data-rating]")
     .forEach((select) => {
-      select.onchange = () => {
-        point[select.dataset.rating] = select.value
-          ? Number(select.value)
-          : null;
-        point.hasRatings = ["match", "stop", "access", "weather"].every(
-          (key) =>
-            Number.isInteger(point[key]) && point[key] >= 1 && point[key] <= 5,
-        );
-        renderAll();
-      };
+      select.onchange = () => updatePointField(point, select.dataset.rating, select.value ? Number(select.value) : null);
     });
   $("#scheduleBtn").onclick = () => openSchedule(point);
   $("#feedbackBtn").onclick = () => openFeedback(point);
-  $("#pauseBtn").onclick = () => {
-    point.paused = !point.paused;
-    renderAll();
-  };
+  $("#pauseBtn").onclick = () => updatePointField(point, "paused", !point.paused);
 }
 function trafficPanel(point) {
   const data = point.traffic;
@@ -591,6 +466,7 @@ function renderMap() {
   for (const tileImage of [...tiles.children])
     if (!wanted.has(tileImage.dataset.key)) tileImage.remove();
   $("#markers").innerHTML = filtered()
+    .filter(point => Number.isFinite(point.lat) && Number.isFinite(point.lng))
     .map((point) => {
       let pointPixels = world(point.lat, point.lng, zoom);
       return `<button class="marker ${classes[status(point)]} ${point.id === selected ? "selected" : ""}" style="left:${pointPixels.x - left}px;top:${pointPixels.y - top}px" data-id="${point.id}" aria-label="${esc(point.name)}，${status(point)}">${point.id}</button>`;
@@ -607,9 +483,11 @@ function renderMap() {
     });
 }
 function renderAll() {
+  document.querySelector(".map-bar strong").textContent = points.find(point => point.id === selected)?.city || "伦敦";
   renderList();
   renderDetail();
   renderMap();
+
 }
 function openModal(title, html) {
   $("#modalTitle").textContent = title;
@@ -640,15 +518,15 @@ function openSchedule(point) {
 <button class="primary submit">确认排班</button>
 </form>`,
   );
-  $("#scheduleForm").onsubmit = (event) => {
+  $("#scheduleForm").onsubmit = async (event) => {
     event.preventDefault();
     const formData = new FormData(event.target);
     if (point.permission !== "已确认" || point.paused) {
       toast("请先确认场地并重启点位");
       return;
     }
-    records.push({
-      id: records.length + 1,
+    const schedule = {
+      id: Math.max(0, ...records.map(record => record.id)) + 1,
       pid: point.id,
       date: formData.get("date"),
       time: formData.get("time"),
@@ -656,7 +534,15 @@ function openSchedule(point) {
       duration: Number(formData.get("duration")),
       state: "已排班",
       note: formData.get("owner") + "：" + formData.get("note"),
-    });
+    };
+    const button = event.target.querySelector('button.submit');
+    button.disabled = true;
+    try {
+      if (cloudUser) schedule.scheduleId = await saveCloudSchedule(point, schedule, formData.get('owner').trim(), formData.get('note').trim());
+      records.push(schedule);
+    } catch (failure) {
+      toast(failure.message); return;
+    } finally { button.disabled = false; }
     $("#modal").close();
     renderAll();
     toast("试推已加入活动记录");
@@ -708,7 +594,7 @@ function openFeedback(point, recordId = null) {
       if (endMinutes < 1440) form.elements.endTime.value = `${String(Math.floor(endMinutes / 60)).padStart(2,'0')}:${String(endMinutes % 60).padStart(2,'0')}`;
     }
   };
-  form.onsubmit = event => {
+  form.onsubmit = async event => {
     event.preventDefault();
     if (!form.reportValidity()) return;
     const data = new FormData(form);
@@ -725,9 +611,21 @@ function openFeedback(point, recordId = null) {
     if (duplicate) return error('相同日期、时段和推荐码已有记录，请编辑原记录。');
     const plan = existing ? null : records.find(record => record.id === Number(data.get('plan')) && record.pid === point.id && record.state === '已排班');
     const updated = {pid:point.id,date:data.get('date'),time:data.get('time'),endTime:data.get('endTime'),referralCode,hours,scans,regs,cost,note:data.get('note').trim(),state:'已完成'};
+    if (cloudUser) {
+      const button = form.querySelector('button.submit');
+      button.disabled = true;
+      try {
+        updated.cloudId = await saveCloudFeedback(point, updated, existing?.cloudId, plan?.scheduleId);
+      } catch (failure) {
+        error(failure.message);
+        return;
+      } finally {
+        button.disabled = false;
+      }
+    }
     if (existing || plan) Object.assign(existing || plan, updated);
     else records.push({...updated,id:Math.max(0,...records.map(record => record.id))+1});
-    $('#modal').close(); renderAll(); toast(existing ? '记录已修改，汇总已更新' : '反馈已保存到当前页面');
+    $('#modal').close(); renderAll(); toast(cloudUser ? '反馈已保存到云端' : '演示反馈仅保留在当前页面');
   };
 }
 
@@ -893,3 +791,17 @@ $("#map").onkeydown = (event) => {
 new ResizeObserver(renderMap).observe($("#map"));
 renderAll();
 
+
+// 成功写入后再更新页面；失败时恢复原值。
+const pendingPointWrites = new Set();
+async function updatePointField(point, field, value) {
+  if (pendingPointWrites.has(point.id)) { renderAll(); toast('这个点位正在保存，请稍后再修改'); return; }
+  pendingPointWrites.add(point.id);
+  try {
+    if (cloudUser) await saveCloudPointField(point, field, value);
+    point[field] = value;
+    point.hasRatings = ['match','stop','access','weather'].every(key => Number.isInteger(point[key]) && point[key] >= 1 && point[key] <= 5);
+    toast(cloudUser ? '已保存到云端' : '演示修改仅本次有效');
+  } catch (failure) { toast(failure.message); }
+  finally { pendingPointWrites.delete(point.id); renderAll(); }
+}
