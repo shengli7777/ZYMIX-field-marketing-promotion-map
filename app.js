@@ -225,7 +225,6 @@ function filtered() {
     .filter(
       (point) =>
         (!$("#typeFilter").value || point.type === $("#typeFilter").value) &&
-        (!$("#viewFilter").value || point.group === $("#viewFilter").value) &&
         (!$("#search").value ||
           (point.name + point.type + (point.city || "") + (point.address || "")).toLowerCase().includes($("#search").value.toLowerCase())) &&
         (!$("#statusFilter").value ||
@@ -289,7 +288,7 @@ function renderDetail() {
     `<span class="badge ${classes[status(point)]}">${status(point)}</span>
 <h2>${esc(point.name)}</h2>
 <div class="meta">${esc(point.type)} · ${point.indoor}<br>${Number.isFinite(point.lat) && Number.isFinite(point.lng) ? `区域中心示意坐标 ${point.lat.toFixed(4)}, ${point.lng.toFixed(4)}` : `地点待核对 · ${esc(point.city || "")} ${esc(point.address || "")}`}</div>${trafficPanel(point)}<h3>开展条件</h3>
-<label>场地类型<select id="venueType">${venueOptions(venueTypes, point.type)}</select></label>
+<label>场地类别<select id="venueType">${venueOptions(venueTypes, point.type)}</select></label>
 <label>环境类型<select id="environmentType">${venueOptions(environmentTypes, point.indoor)}</select></label>
 <label>场地确认<select id="permission">
 <option>待确认</option>
@@ -607,7 +606,6 @@ function openAdd(lat, lng) {
       point[fieldName] = Number(formData.get(fieldName));
     points.push(point);
     $("#modal").close();
-    $("#viewFilter").value = "";
     $("#typeFilter").value = "";
     $("#search").value = "";
     $("#statusFilter").value = "";
@@ -616,11 +614,6 @@ function openAdd(lat, lng) {
     toast("候选点位已新增");
   };
 }
-$("#viewFilter").onchange = () => {
-  $("#statusFilter").value = "";
-  renderList();
-  renderMap();
-};
 $("#search").oninput = () => {
   renderList();
   renderMap();

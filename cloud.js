@@ -175,7 +175,7 @@ openAdd = function (lat = null, lng = null) {
       <label id="otherCityLabel" hidden>填写城市<input name="otherCity" maxlength="80"></label>
       <label>具体地推地点<input name="name" placeholder="例如 Westgate、Chinatown" required maxlength="80"></label>
       <label>街道或邮编（选填）<input name="address" placeholder="例如 OX1 1TR" maxlength="200"></label>
-      <label>场地类型<select name="venueType">${venueOptions(venueTypes)}</select></label>
+      <label>场地类别<select name="venueType">${venueOptions(venueTypes)}</select></label>
       <label>环境类型<select name="environmentType">${venueOptions(environmentTypes)}</select></label>
       <div id="locationPreview" class="note" aria-live="polite"></div>
       <div id="locationMatches"></div>
@@ -190,7 +190,7 @@ openAdd = function (lat = null, lng = null) {
   let searchVersion = 0;
   const cityValue = () => cleanLocationText(form.elements.city.value === 'other' ? form.elements.otherCity.value : form.elements.city.value);
   const usePoint = point => {
-    $('#search').value = ''; $('#statusFilter').value = ''; $('#viewFilter').value = ''; $('#typeFilter').value = '';  $('#indoorFilter').value = '';
+    $('#search').value = ''; $('#statusFilter').value = ''; $('#typeFilter').value = '';  $('#indoorFilter').value = '';
     $('#modal').close(); selectPoint(point.id);
   };
   const preview = () => {
@@ -353,7 +353,7 @@ function enterTeamMode() {
   $('#presencePanel').hidden = false;
   $('.bottom-note').textContent = '同一标签页刷新后保持登录；点击刷新数据读取团队更新。页面在前台时每分钟记录活跃时间，不记录输入内容。';
   $('.footnote').textContent = '这里只显示团队保存的地点和活动记录。';
-  $('#viewFilter').value = ''; $('#typeFilter').value = '';  $('#viewFilter option[value="demo"]').disabled = true;
+  $('#typeFilter').value = '';  
   $('#statusFilter').value = ''; $('#search').value = '';
   selected = points[0]?.id;
   renderAll();

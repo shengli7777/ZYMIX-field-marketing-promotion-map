@@ -10,7 +10,7 @@
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2307c160'/%3E%3Cpath d='M16 5a8 8 0 0 0-8 8c0 6 8 14 8 14s8-8 8-14a8 8 0 0 0-8-8' fill='white'/%3E%3Ccircle cx='16' cy='13' r='3' fill='%2307c160'/%3E%3C/svg%3E"
     />
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="style.css?v=20261013-filter2" />
   </head>
   <body>
     <header>
@@ -32,14 +32,8 @@
         </div>
         <label class="search-label"
           ><span class="sr">搜索点位</span><input id="search" placeholder="搜索点位或类型" /></label
-        ><label class="view-label" hidden
-          >查看内容<select id="viewFilter">
-            <option value="">全部点位</option>
-            <option value="candidate">团队活动区域</option>
-            <option value="demo">活动演示点位</option>
-          </select></label
         >
-        <label>场地类型<select id="typeFilter">
+        <label>场地类别<select id="typeFilter">
           <option value="">全部类型</option>
           <option>校园周边</option><option>交通站点周边</option>
           <option>商圈／商业街</option><option>餐饮店周边</option>
@@ -106,9 +100,9 @@
       <div id="modalBody"></div>
     </dialog>
     <div id="toast" role="status"></div>
-    <script src="app.js"></script>
-    <script src="cloud.js"></script>
-    <script src="screening.js"></script>
+    <script src="app.js?v=20261013-filter2"></script>
+    <script src="cloud.js?v=20261013-filter2"></script>
+    <script src="screening.js?v=20261013-filter2"></script>
   </body>
 </html>
 
