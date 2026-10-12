@@ -28,17 +28,24 @@
       <aside class="locations">
         <div class="section-head">
           <h1>选择下一次试推点位</h1>
-          <p>看看客流，再安排活动、记录反馈。</p>
+          <p>比较候选地点，查看周边资料和活动反馈。</p>
         </div>
         <label class="search-label"
           ><span class="sr">搜索点位</span><input id="search" placeholder="搜索点位或类型" /></label
-        ><label class="view-label"
+        ><label class="view-label" hidden
           >查看内容<select id="viewFilter">
             <option value="">全部点位</option>
             <option value="candidate">团队活动区域</option>
             <option value="demo">活动演示点位</option>
           </select></label
         >
+        <label>场地类型<select id="typeFilter">
+          <option value="">全部类型</option>
+          <option>校园周边</option><option>交通站点周边</option>
+          <option>商圈／商业街</option><option>餐饮店周边</option>
+          <option>公园／广场</option><option>学生公寓周边</option>
+          <option>其他</option><option>待确认</option>
+        </select></label>
         <div class="filters">
           <label
             >点位状态<select id="statusFilter">
@@ -49,8 +56,8 @@
               <option>暂停</option>
             </select></label
           ><label
-            >场地<select id="indoorFilter">
-              <option value="">室内及室外</option>
+            >环境类型<select id="indoorFilter">
+              <option value="">全部环境</option>
               <option>室内</option>
               <option>室外</option>
             <option>室内外混合</option><option>待确认</option></select></label

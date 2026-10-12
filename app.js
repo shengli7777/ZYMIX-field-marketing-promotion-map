@@ -224,6 +224,7 @@ function filtered() {
   return points
     .filter(
       (point) =>
+        (!$("#typeFilter").value || point.type === $("#typeFilter").value) &&
         (!$("#viewFilter").value || point.group === $("#viewFilter").value) &&
         (!$("#search").value ||
           (point.name + point.type + (point.city || "") + (point.address || "")).toLowerCase().includes($("#search").value.toLowerCase())) &&
@@ -607,6 +608,7 @@ function openAdd(lat, lng) {
     points.push(point);
     $("#modal").close();
     $("#viewFilter").value = "";
+    $("#typeFilter").value = "";
     $("#search").value = "";
     $("#statusFilter").value = "";
     $("#indoorFilter").value = "";
@@ -623,7 +625,7 @@ $("#search").oninput = () => {
   renderList();
   renderMap();
 };
-$("#statusFilter").onchange = $("#indoorFilter").onchange = () => {
+$("#typeFilter").onchange = $("#statusFilter").onchange = $("#indoorFilter").onchange = () => {
   renderList();
   renderMap();
 };

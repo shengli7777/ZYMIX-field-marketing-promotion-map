@@ -752,3 +752,5 @@ textarea { font: inherit; width: 100%; padding: 10px; border: 1px solid #cce3d4;
   max-height: 280px;
   overflow-y: auto;
 }
+
+.view-label[hidden] { display: none; }
