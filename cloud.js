@@ -7,6 +7,7 @@ const cloudConfig = {
 };
 
 async function cloudRequest(path, options = {}) {
+  if (path.startsWith('/rest/')) await renewSession();
   let response;
   try {
     response = await fetch(cloudConfig.url + path, {
@@ -33,15 +34,14 @@ async function cloudRequest(path, options = {}) {
 
 function showLogin() {
   if (cloudUser) {
-    // 重新加载页面会清除内存里的账号信息和真实记录。
-    window.location.reload();
+    signOutWorkbench();
     return;
   }
   openModal('登录工作台', `
     <form id="loginForm">
       <label>邮箱<input name="email" type="email" autocomplete="username" required></label>
       <label>密码<input name="password" type="password" autocomplete="current-password" required></label>
-      <p class="note">使用刚才在 Authentication 中创建的账号。登录后查看团队真实反馈；刷新页面后需要重新登录。</p>
+      <p class="note">使用刚才在 Authentication 中创建的账号。登录后查看团队真实反馈；同一标签页刷新后保持登录，关闭标签页后需要重新登录。团队可见最近活跃时间，不记录你的输入内容。</p>
       <p id="loginError" class="error" role="alert"></p>
       <button class="primary submit">登录</button>
     </form>`);
@@ -57,27 +57,20 @@ function showLogin() {
         method: 'POST',
         body: JSON.stringify({ email: data.get('email').trim(), password: data.get('password') })
       });
-      cloudToken = session.access_token;
+      rememberSession(session);
       const members = await cloudRequest('/rest/v1/team_members?select=user_id');
       if (!members?.some(member => member.user_id === session.user.id)) {
         throw new Error('账号已创建，但尚未加入工作台成员名单。');
       }
       await loadCloudData();
       cloudUser = session.user;
-      $('#loginBtn').textContent = '退出登录';
-      $('#cloudStatus').textContent = '团队反馈 · 云端保存';
-      $('.bottom-note').textContent = '团队模式：地点、评分、场地状态、排班和反馈均保存到云端。重新登录可读取团队最新记录。';
-      $('.footnote').textContent = '这里只显示团队保存的地点和活动记录。';
-      $('#viewFilter').value = '';
-      $('#viewFilter option[value="demo"]').disabled = true;
-      $('#statusFilter').value = '';
-      $('#search').value = '';
-      selected = points[0]?.id;
+      enterTeamMode();
       $('#modal').close();
       $('#modalBody').replaceChildren();
-      renderAll();
       toast('已登录，已读取云端反馈');
     } catch (failure) {
+      sessionStorage.removeItem(sessionKey);
+      savedSession = null;
       cloudToken = null;
       cloudUser = null;
       $('#loginError').textContent = failure.message;
@@ -88,10 +81,9 @@ function showLogin() {
 }
 
 async function loadCloudData() {
-  const [areas, feedback, schedules] = await Promise.all([
+  const [areas, feedback] = await Promise.all([
     readAllRows('areas', 'created_at.asc,id.asc'),
-    readAllRows('activity_feedback', 'activity_date.desc,id.asc'),
-    readAllRows('activity_schedules', 'activity_date.asc,id.asc')
+    readAllRows('activity_feedback', 'activity_date.desc,id.asc')
   ]);
   // 不把演示活动和浏览器中未保存的修改导入真实数据库。
   const nextPoints = [];
@@ -102,7 +94,7 @@ async function loadCloudData() {
         id: Math.max(0, ...nextPoints.map(item => item.id)) + 1,
         name: area.name, city: area.city,
         lat: area.latitude, lng: area.longitude, address: area.address_hint || "",
-        type: '团队活动区域', indoor: '室外', permission: '待确认',
+        type: area.venue_type || '待确认', indoor: area.environment_type || '待确认', permission: '待确认',
         group: 'candidate', paused: false, note: '',
         match: null, stop: null, access: null, weather: null
       };
@@ -125,14 +117,6 @@ async function loadCloudData() {
     cost: row.total_cost_gbp === null ? null : Number(row.total_cost_gbp),
     scans: row.scan_count, regs: row.registration_count, note: row.notes, state: '已完成'
   }));
-  const finishedSchedules = new Set(feedback.map(row => row.schedule_id).filter(Boolean));
-  for (const row of schedules) {
-    if (finishedSchedules.has(row.id)) continue;
-    nextRecords.push({id: nextRecords.length + 1, scheduleId: row.id,
-      pid: nextPoints.find(point => point.cloudId === row.area_id)?.id,
-      date: row.activity_date, time: row.start_time.slice(0,5), people: row.people,
-      duration: Number(row.duration), note: row.owner_name + '：' + row.notes, state: '已排班'});
-  }
   points.splice(0, points.length, ...nextPoints);
   records.splice(0, records.length, ...nextRecords);
 }
@@ -191,6 +175,8 @@ openAdd = function (lat = null, lng = null) {
       <label id="otherCityLabel" hidden>填写城市<input name="otherCity" maxlength="80"></label>
       <label>具体地推地点<input name="name" placeholder="例如 Westgate、Chinatown" required maxlength="80"></label>
       <label>街道或邮编（选填）<input name="address" placeholder="例如 OX1 1TR" maxlength="200"></label>
+      <label>场地类型<select name="venueType">${venueOptions(venueTypes)}</select></label>
+      <label>环境类型<select name="environmentType">${venueOptions(environmentTypes)}</select></label>
       <div id="locationPreview" class="note" aria-live="polite"></div>
       <div id="locationMatches"></div>
       <button type="button" id="findLocation">查找地图位置</button>
@@ -256,12 +242,14 @@ openAdd = function (lat = null, lng = null) {
       const id = await ensureCloudArea(existing || { city, name, address, lat: chosenLocation.lat, lng: chosenLocation.lng });
       const saved = await cloudRequest('/rest/v1/areas?id=eq.' + id, {
         method: 'PATCH', headers: {Prefer: 'return=representation'},
-        body: JSON.stringify({latitude: chosenLocation.lat, longitude: chosenLocation.lng, address_hint: address || chosenLocation.label})
+        body: JSON.stringify({latitude: chosenLocation.lat, longitude: chosenLocation.lng, address_hint: address || chosenLocation.label,
+          ...(!existing ? {venue_type: form.elements.venueType.value, environment_type: form.elements.environmentType.value} : {})})
       });
       if (!saved?.length) throw new Error('位置未保存成功，请重试。');
       await loadCloudData();
       usePoint(points.find(point => point.cloudId === id));
       toast('地点和地图位置已保存');
+      if (typeof openScreening === 'function') openScreening(points.find(item => item.cloudId === id));
     } catch (failure) {
       $('#areaError').textContent = failure.message;
     } finally { button.disabled = false; }
@@ -301,7 +289,7 @@ async function searchLocations(query) {
       Number.isFinite(feature.geometry.coordinates[0]) && Number.isFinite(feature.geometry.coordinates[1])
     ).map(feature => {
       const p = feature.properties;
-      return {lng: feature.geometry.coordinates[0], lat: feature.geometry.coordinates[1],
+      return {category: p.osm_value || "", categoryKey: p.osm_key || "", lng: feature.geometry.coordinates[0], lat: feature.geometry.coordinates[1],
         label: [...new Set([p.name, p.housenumber, p.street, p.district, p.city, p.county, p.postcode, p.country].filter(Boolean))].join(', ')};
     });
     geocodeCache.set(key, results);
@@ -312,7 +300,7 @@ async function searchLocations(query) {
 }
 
 async function saveCloudPointField(point, field, value) {
-  const columns = {permission:'permission',paused:'paused',match:'rating_match',stop:'rating_stop',access:'rating_access',weather:'rating_weather'};
+  const columns = {type:'venue_type',indoor:'environment_type',permission:'permission',paused:'paused',match:'rating_match',stop:'rating_stop',access:'rating_access',weather:'rating_weather'};
   if (!columns[field]) throw new Error('不支持的点位字段');
   const id = await ensureCloudArea(point);
   const rows = await cloudRequest('/rest/v1/areas?id=eq.' + id, {
@@ -331,3 +319,112 @@ async function saveCloudSchedule(point, record, owner, notes) {
   if (!rows?.length) throw new Error('排班未保存成功，请重试。');
   return rows[0].id;
 }
+
+// 只存当前标签页的会话令牌，不保存密码或业务数据。
+const sessionKey = 'zymix-workbench-session-v1';
+let savedSession = null;
+let refreshInFlight = null;
+let presenceInFlight = false;
+let dataRefreshing = false;
+try { savedSession = JSON.parse(sessionStorage.getItem(sessionKey) || 'null'); } catch { sessionStorage.removeItem(sessionKey); }
+
+function rememberSession(session) {
+  savedSession = {access_token: session.access_token, refresh_token: session.refresh_token,
+    expires_at: session.expires_at || Math.floor(Date.now()/1000) + session.expires_in};
+  cloudToken = session.access_token;
+  sessionStorage.setItem(sessionKey, JSON.stringify(savedSession));
+}
+async function renewSession() {
+  if (!savedSession) return;
+  cloudToken = savedSession.access_token;
+  if (savedSession.expires_at > Date.now()/1000 + 60) return;
+  if (!refreshInFlight) refreshInFlight = (async () => {
+    const session = await cloudRequest('/auth/v1/token?grant_type=refresh_token', {
+      method:'POST', body:JSON.stringify({refresh_token:savedSession.refresh_token})
+    });
+    rememberSession(session);
+  })().finally(() => { refreshInFlight = null; });
+  await refreshInFlight;
+}
+function enterTeamMode() {
+  $('#loginBtn').textContent = '退出登录';
+  $('#cloudStatus').textContent = '团队数据 · 云端保存';
+  $('#refreshDataBtn').hidden = false;
+  $('#presencePanel').hidden = false;
+  $('.bottom-note').textContent = '同一标签页刷新后保持登录；点击刷新数据读取团队更新。页面在前台时每分钟记录活跃时间，不记录输入内容。';
+  $('.footnote').textContent = '这里只显示团队保存的地点和活动记录。';
+  $('#viewFilter').value = ''; $('#viewFilter option[value="demo"]').disabled = true;
+  $('#statusFilter').value = ''; $('#search').value = '';
+  selected = points[0]?.id;
+  renderAll();
+  updatePresence();
+}
+async function signOutWorkbench() {
+  $('#loginBtn').disabled = true;
+  try { await cloudRequest('/auth/v1/logout?scope=local', {method:'POST'}); } catch { /* 本机仍会清除会话。 */ }
+  finally {
+    savedSession = null; cloudUser = null; cloudToken = null;
+    sessionStorage.removeItem(sessionKey);
+    window.location.reload();
+  }
+}
+async function restoreWorkbench() {
+  if (!savedSession) return;
+  $('#loginBtn').disabled = true;
+  $('#cloudStatus').textContent = '正在恢复登录…';
+  try {
+    await renewSession();
+    const user = await cloudRequest('/auth/v1/user');
+    const members = await cloudRequest('/rest/v1/team_members?select=user_id');
+    if (!members.some(member => member.user_id === user.id)) throw new Error('账号没有团队权限');
+    await loadCloudData();
+    cloudUser = user;
+    enterTeamMode();
+  } catch (failure) {
+    cloudToken = null; cloudUser = null;
+    $('#cloudStatus').textContent = '恢复登录失败，请重新登录';
+    toast(failure.message);
+  } finally { $('#loginBtn').disabled = false; }
+}
+$('#refreshDataBtn').onclick = async () => {
+  if (!cloudUser || dataRefreshing) return;
+  if ($('#modal').open || pendingPointWrites.size) { toast('请先保存或关闭当前表单，再刷新数据'); return; }
+  dataRefreshing = true;
+  $('#refreshDataBtn').disabled = true;
+  const areaId = points.find(point => point.id === selected)?.cloudId;
+  // 读取期间禁用编辑入口，避免返回的数据覆盖正在填写的表单。
+  const controls = [...document.querySelectorAll('#detail button, #detail select, #addBtn, #loginBtn')];
+  const previous = controls.map(control => control.disabled);
+  controls.forEach(control => control.disabled = true);
+  try {
+    await loadCloudData();
+    selected = points.find(point => point.cloudId === areaId)?.id ?? points[0]?.id;
+    $('#syncTime').textContent = '数据更新于 ' + new Date().toLocaleTimeString('zh-CN');
+    toast('已读取团队最新数据');
+  } catch (failure) { toast(failure.message); }
+  finally {
+    dataRefreshing = false; $('#refreshDataBtn').disabled = false;
+    controls.forEach((control,index) => control.disabled = previous[index]);
+    renderAll();
+  }
+};
+async function updatePresence() {
+  if (!cloudUser || document.hidden || presenceInFlight) return;
+  presenceInFlight = true;
+  try {
+    await cloudRequest('/rest/v1/rpc/workbench_heartbeat', {method:'POST',body:'{}'});
+    const members = await cloudRequest('/rest/v1/rpc/workbench_presence', {method:'POST',body:'{}'});
+    $('#presenceList').innerHTML = members.map(member => {
+      const recent = member.last_seen && Date.parse(member.server_now)-Date.parse(member.last_seen) < 120000;
+      const text = !member.last_seen ? '尚无活跃记录' : (recent ? '近2分钟打开过工作台' : '最近活跃：' + new Date(member.last_seen).toLocaleString('zh-CN'));
+      return `<div>${esc(member.display_name)}${member.user_id === cloudUser.id ? '（你）' : ''}：${esc(text)}</div>`;
+    }).join('');
+    $('#presenceChecked').textContent = '状态检查于 ' + new Date().toLocaleTimeString('zh-CN') + '；不代表正在填写，离开后最多约2分钟才过期。';
+  } catch {
+    $('#presenceList').textContent = '暂时无法读取活跃状态';
+    $('#presenceChecked').textContent = '请确认已运行 presence-update.sql；不会影响活动数据保存。';
+  } finally { presenceInFlight = false; }
+}
+setInterval(updatePresence, 60000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) updatePresence(); });
+restoreWorkbench();

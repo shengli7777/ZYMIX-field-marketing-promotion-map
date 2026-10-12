@@ -732,3 +732,23 @@ textarea { font: inherit; width: 100%; padding: 10px; border: 1px solid #cce3d4;
 
 .geo-result {display:block;width:100%;text-align:left;margin:8px 0;padding:12px;white-space:normal;}
 .selected-location {border:2px solid #07c160;background:#e8f8ee;}
+
+#presencePanel {margin:10px 0;padding:10px;background:#edf8f1;border-radius:8px;font-size:12px;}
+#presencePanel summary {cursor:pointer;font-weight:600;}
+#presenceList div {margin:8px 0;}
+#presenceChecked,#syncTime {color:#65776e;font-size:11px;}
+
+.rating-suggestion {padding:12px 0;border-bottom:1px solid #dfebe4;}
+.rating-suggestion p {font-size:13px;line-height:1.6;}
+.rating-suggestion input[type=checkbox] {width:auto;margin-right:6px;}
+
+/* 公开资料初筛确认表 */
+#evidenceScoreForm input[type="checkbox"] {
+  width: auto;
+  margin-right: 8px;
+}
+#screeningBody details {
+  margin: 16px 0;
+  max-height: 280px;
+  overflow-y: auto;
+}

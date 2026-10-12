@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <title>ZYMIX 地推点位工作台</title>
-    <meta name="description" content="用地图筛选地推点位、安排试推并记录活动反馈。" />
+    <meta name="description" content="用地图筛选地推点位并记录活动反馈。" />
     <link
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2307c160'/%3E%3Cpath d='M16 5a8 8 0 0 0-8 8c0 6 8 14 8 14s8-8 8-14a8 8 0 0 0-8-8' fill='white'/%3E%3Ccircle cx='16' cy='13' r='3' fill='%2307c160'/%3E%3C/svg%3E"
@@ -19,7 +19,7 @@
         <div><strong>ZYMIX</strong><span>地推点位工作台</span></div>
       </div>
       <div class="header-right">
-        <button id="loginBtn">登录工作台</button><span id="cloudStatus" class="demo">公开演示</span
+        <button id="refreshDataBtn" hidden>刷新数据</button><button id="loginBtn">登录工作台</button><span id="cloudStatus" class="demo">公开演示</span
         ><button id="helpBtn" class="quiet">查看工作流</button
         ><button id="addBtn" class="primary">新增点位</button>
       </div>
@@ -45,7 +45,6 @@
               <option value="">全部状态</option>
               <option>候选</option>
               <option>可试推</option>
-              <option>已排班</option>
               <option>已反馈</option>
               <option>暂停</option>
             </select></label
@@ -54,10 +53,11 @@
               <option value="">室内及室外</option>
               <option>室内</option>
               <option>室外</option>
-            </select></label
+            <option>室内外混合</option><option>待确认</option></select></label
           >
         </div>
         <div class="list-top"><span id="count"></span><span>候选与活动</span></div>
+        <details id="presencePanel" hidden><summary>团队最近活跃</summary><div id="presenceList"></div><small id="presenceChecked"></small></details><small id="syncTime"></small>
         <div id="pointList" class="point-list"></div>
         <p class="footnote">未登录时显示模拟活动；登录后只显示团队保存的地点。</p>
       </aside>
@@ -84,13 +84,13 @@
         </div>
         <div class="legend">
           <span><i class="dot candidate"></i>候选</span><span><i class="dot ready"></i>可试推</span
-          ><span><i class="dot planned"></i>已排班</span><span><i class="dot done"></i>已反馈</span
+          ><span><i class="dot done"></i>已反馈</span
           ><span><i class="dot paused"></i>暂停</span>
         </div>
       </section>
       <aside id="detail" class="detail" aria-live="polite"></aside>
     </main>
-    <div class="bottom-note">公开演示：修改仅本次有效。登录后地点、评分、场地状态、排班与反馈保存到云端。</div>
+    <div class="bottom-note">公开演示：修改仅本次有效。登录后地点、评分、场地状态与反馈保存到云端。</div>
     <dialog id="modal">
       <div class="modal-head">
         <h2 id="modalTitle"></h2>
@@ -101,6 +101,7 @@
     <div id="toast" role="status"></div>
     <script src="app.js"></script>
     <script src="cloud.js"></script>
+    <script src="screening.js"></script>
   </body>
 </html>
 

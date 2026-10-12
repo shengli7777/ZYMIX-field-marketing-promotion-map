@@ -1,3 +1,10 @@
+const venueTypes = ['待确认', '校园周边', '交通站点周边', '商圈／商业街', '餐饮店周边', '公园／广场', '学生公寓周边', '其他'];
+const environmentTypes = ['待确认', '室内', '室外', '室内外混合'];
+function venueOptions(values, current = '待确认') {
+  const options = values.includes(current) ? values : [current, ...values];
+  return options.map(value => `<option ${value === current ? 'selected' : ''}>${esc(value)}</option>`).join('');
+}
+
 "use strict";
 
 const $ = (s) => document.querySelector(s);
@@ -29,7 +36,7 @@ const points = [
     weather: 5,
     paused: false,
     group: "demo",
-    note: "活动演示点，用来试用排班和反馈。",
+    note: "活动演示点，用来试用选址和反馈。",
   },
   {
     id: 6,
@@ -45,7 +52,7 @@ const points = [
     weather: 2,
     paused: false,
     group: "demo",
-    note: "活动演示点，用来试用排班和反馈。",
+    note: "活动演示点，用来试用选址和反馈。",
   },
   {
     id: 7,
@@ -61,7 +68,7 @@ const points = [
     weather: 5,
     paused: false,
     group: "demo",
-    note: "活动演示点，用来试用排班和反馈。",
+    note: "活动演示点，用来试用选址和反馈。",
   },
   {
     id: 8,
@@ -77,7 +84,7 @@ const points = [
     weather: 2,
     paused: true,
     group: "demo",
-    note: "活动演示点，用来试用排班和反馈。",
+    note: "活动演示点，用来试用选址和反馈。",
   },
   {
     id: 9,
@@ -93,7 +100,7 @@ const points = [
     weather: 5,
     paused: false,
     group: "demo",
-    note: "活动演示点，用来试用排班和反馈。",
+    note: "活动演示点，用来试用选址和反馈。",
   },
   {
     id: 10,
@@ -109,7 +116,7 @@ const points = [
     weather: 2,
     paused: false,
     group: "demo",
-    note: "活动演示点，用来试用排班和反馈。",
+    note: "活动演示点，用来试用选址和反馈。",
   },
 ];
 const records = [
@@ -136,16 +143,6 @@ const records = [
     cost: 120,
     state: "已完成",
     note: "示例：第二次试推",
-  },
-  {
-    id: 3,
-    pid: 6,
-    date: "2026-10-08",
-    time: "13:00",
-    people: 2,
-    duration: 2,
-    state: "已排班",
-    note: "示例：下午试推",
   },
   {
     id: 4,
@@ -191,12 +188,6 @@ function status(point) {
   if (point.paused || point.permission === "不允许") return "暂停";
   if (
     records.some(
-      (record) => record.pid === point.id && record.state === "已排班",
-    )
-  )
-    return "已排班";
-  if (
-    records.some(
       (record) => record.pid === point.id && record.state === "已完成",
     )
   )
@@ -224,12 +215,6 @@ function nextAction(point) {
   if (point.permission === "待确认")
     return "先确认开放时间、场地要求与是否可开展。";
   if (point.paused) return "先复核低效原因或现场限制，再决定是否重启。";
-  if (
-    records.some(
-      (record) => record.pid === point.id && record.state === "已排班",
-    )
-  )
-    return "按计划执行，活动结束后记录实际投入与结果。";
   let metrics = aggregate(point);
   if (!metrics.n) return "安排一次小规模试推，验证目标用户与停留情况。";
   if (metrics.n < 2) return "目前只有一次反馈，换时段复测后再判断。";
@@ -303,6 +288,8 @@ function renderDetail() {
     `<span class="badge ${classes[status(point)]}">${status(point)}</span>
 <h2>${esc(point.name)}</h2>
 <div class="meta">${esc(point.type)} · ${point.indoor}<br>${Number.isFinite(point.lat) && Number.isFinite(point.lng) ? `区域中心示意坐标 ${point.lat.toFixed(4)}, ${point.lng.toFixed(4)}` : `地点待核对 · ${esc(point.city || "")} ${esc(point.address || "")}`}</div>${trafficPanel(point)}<h3>开展条件</h3>
+<label>场地类型<select id="venueType">${venueOptions(venueTypes, point.type)}</select></label>
+<label>环境类型<select id="environmentType">${venueOptions(environmentTypes, point.indoor)}</select></label>
 <label>场地确认<select id="permission">
 <option>待确认</option>
 <option>已确认</option>
@@ -335,7 +322,6 @@ function renderDetail() {
 <strong>下一步</strong>
 <p class="note">${nextAction(point)}</p>
 <div class="actions">
-<button id="scheduleBtn" class="primary" ${point.permission !== "已确认" || point.paused ? "disabled" : ""}>安排试推</button>
 <button id="feedbackBtn">记录反馈</button>
 </div>
 <button id="pauseBtn" class="quiet" style="margin-top:10px;width:100%">${point.paused ? "重启点位" : "暂停点位"}</button>
@@ -348,6 +334,8 @@ function renderDetail() {
   $("#detail").querySelectorAll("[data-record-id]").forEach(button => {
     button.onclick = () => openFeedback(point, Number(button.dataset.recordId));
   });
+  $("#venueType").onchange = event => updatePointField(point, "type", event.target.value);
+  $("#environmentType").onchange = event => updatePointField(point, "indoor", event.target.value);
   $("#permission").value = point.permission;
   $("#permission").onchange = event => updatePointField(point, "permission", event.target.value);
   $("#detail")
@@ -355,7 +343,6 @@ function renderDetail() {
     .forEach((select) => {
       select.onchange = () => updatePointField(point, select.dataset.rating, select.value ? Number(select.value) : null);
     });
-  $("#scheduleBtn").onclick = () => openSchedule(point);
   $("#feedbackBtn").onclick = () => openFeedback(point);
   $("#pauseBtn").onclick = () => updatePointField(point, "paused", !point.paused);
 }
@@ -490,6 +477,7 @@ function renderAll() {
 
 }
 function openModal(title, html) {
+  if (typeof dataRefreshing !== "undefined" && dataRefreshing) { toast("正在刷新数据，请稍后打开表单"); return; }
   $("#modalTitle").textContent = title;
   $("#modalBody").innerHTML = html;
   $("#modal").showModal();
@@ -504,49 +492,6 @@ function todayDate() {
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const day = String(now.getDate()).padStart(2, "0");
   return `${now.getFullYear()}-${month}-${day}`;
-}
-function openSchedule(point) {
-  openModal(
-    "安排试推",
-    `<p class="note">${esc(point.name)} · 确认实际人员、时间和物料后再执行。</p>
-<form id="scheduleForm">
-<div class="form-grid">${field("日期", "date", "date", todayDate())}${field("开始时间", "time", "time", "13:00")}${field("参与人数", "people", "number", 2, 'min="1" step="1"')}${field("预计时长 小时", "duration", "number", 2, 'min="0.5" step="0.5"')}<label class="full">负责人<input name="owner" placeholder="填写负责人" required>
-</label>
-<label class="full">执行备注<input name="note" placeholder="时间、物料和雨天备选" required>
-</label>
-</div>
-<button class="primary submit">确认排班</button>
-</form>`,
-  );
-  $("#scheduleForm").onsubmit = async (event) => {
-    event.preventDefault();
-    const formData = new FormData(event.target);
-    if (point.permission !== "已确认" || point.paused) {
-      toast("请先确认场地并重启点位");
-      return;
-    }
-    const schedule = {
-      id: Math.max(0, ...records.map(record => record.id)) + 1,
-      pid: point.id,
-      date: formData.get("date"),
-      time: formData.get("time"),
-      people: Number(formData.get("people")),
-      duration: Number(formData.get("duration")),
-      state: "已排班",
-      note: formData.get("owner") + "：" + formData.get("note"),
-    };
-    const button = event.target.querySelector('button.submit');
-    button.disabled = true;
-    try {
-      if (cloudUser) schedule.scheduleId = await saveCloudSchedule(point, schedule, formData.get('owner').trim(), formData.get('note').trim());
-      records.push(schedule);
-    } catch (failure) {
-      toast(failure.message); return;
-    } finally { button.disabled = false; }
-    $("#modal").close();
-    renderAll();
-    toast("试推已加入活动记录");
-  };
 }
 function activityCard(record) {
   const timeRange = record.endTime ? `${record.time}–${record.endTime}` : record.time;
@@ -563,12 +508,10 @@ function activityCard(record) {
 function openFeedback(point, recordId = null) {
   const existing = recordId === null ? null : records.find(record => record.id === recordId && record.pid === point.id && record.state === '已完成');
   if (recordId !== null && !existing) { toast('找不到这条记录'); return; }
-  const plans = records.filter(record => record.pid === point.id && record.state === '已排班');
   const input = (label, name, type, value, required = true, extra = '') => `<label>${label}<input name="${name}" type="${type}" value="${esc(value ?? '')}" ${required ? 'required' : ''} ${extra}></label>`;
   openModal(existing ? '编辑活动反馈' : '记录活动反馈', `
     <p class="note">区域：${esc(point.name)}。一组一场填一条；推荐码用来区分同一区域的不同小组。</p>
     <form id="feedbackForm"><div class="form-grid">
-      ${existing ? '' : `<label class="full">对应活动<select name="plan"><option value="">补录一次活动</option>${plans.map(record => `<option value="${record.id}">${esc(record.date)} ${esc(record.time)} 的试推</option>`).join('')}</select></label>`}
       ${input('日期','date','date',existing?.date || todayDate())}
       ${input('推荐码','referralCode','text',existing?.referralCode || '',true,'maxlength="60" placeholder="例如：1号、004"')}
       ${input('开始时间','time','time',existing?.time || '13:00')}
@@ -583,17 +526,6 @@ function openFeedback(point, recordId = null) {
     <p id="formError" class="error" role="alert"></p>
     <button class="primary submit">${existing ? '保存修改' : '保存反馈'}</button></form>`);
   const form = $('#feedbackForm');
-  if (form.elements.plan) form.elements.plan.onchange = () => {
-    const plan = plans.find(record => record.id === Number(form.elements.plan.value));
-    form.elements.date.value = plan?.date || todayDate();
-    form.elements.time.value = plan?.time || '13:00';
-    form.elements.endTime.value = '';
-    if (plan?.duration) {
-      const [hours, minutes] = plan.time.split(':').map(Number);
-      const endMinutes = hours * 60 + minutes + Math.round(plan.duration * 60);
-      if (endMinutes < 1440) form.elements.endTime.value = `${String(Math.floor(endMinutes / 60)).padStart(2,'0')}:${String(endMinutes % 60).padStart(2,'0')}`;
-    }
-  };
   form.onsubmit = async event => {
     event.preventDefault();
     if (!form.reportValidity()) return;
@@ -609,7 +541,7 @@ function openFeedback(point, recordId = null) {
     if (scans !== null && regs > scans) return error('注册人数超过扫码次数，请核对同一场活动的数据；扫码数未知可留空。');
     const duplicate = records.some(record => record.id !== existing?.id && record.pid === point.id && record.state === '已完成' && record.date === data.get('date') && record.time === data.get('time') && record.endTime === data.get('endTime') && record.referralCode === referralCode);
     if (duplicate) return error('相同日期、时段和推荐码已有记录，请编辑原记录。');
-    const plan = existing ? null : records.find(record => record.id === Number(data.get('plan')) && record.pid === point.id && record.state === '已排班');
+    const plan = null;
     const updated = {pid:point.id,date:data.get('date'),time:data.get('time'),endTime:data.get('endTime'),referralCode,hours,scans,regs,cost,note:data.get('note').trim(),state:'已完成'};
     if (cloudUser) {
       const button = form.querySelector('button.submit');
